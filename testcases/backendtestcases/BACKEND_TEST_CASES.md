@@ -126,6 +126,31 @@ These test cases verify API responses, authorization, business rules, database e
 | BE-079 | P1 | Send invalid JSON, wrong content type, unknown fields, malformed IDs, and oversized values | Safe `400 invalid_input`/documented validation response; process remains healthy and no partial mutation occurs. |
 | BE-080 | P0 | Verify event/activity data isolation across users and admins | Student responses expose only their own private data; admin endpoints expose only authorized activity data; no cross-tenant/IDOR leakage. |
 
+## Additional edge and boundary cases
+
+| ID | Priority | Request/setup | Expected result |
+|---|---|---|---|
+| BE-081 | P1 | Create activities whose start/end cross UTC midnight, cross a daylight-saving transition, or use different valid IANA time zones | Stored instants remain correct UTC values; display/payload conversion preserves the intended local wall time and duration. Invalid/unknown zones remain `400 invalid_input`. |
+| BE-082 | P0 | Registration/deadline worker runs at the deadline boundary and is delivered more than once | A registration at `T` is rejected; close/assignment transition is idempotent and starts at most one logical assignment. |
+| BE-083 | P0 | Test participant counts 0, 1, 2, 3, exactly max, max+1, and an exact multiple of max | Solver accepts only partitions satisfying min size 3 and max size; insufficient/impossible counts are diagnosed without leftover members or partial publication. |
+| BE-084 | P0 | Test counts that make naive balanced capacities violate min size (for example 10 participants with max 3) | Solver reports infeasible under the configured min/max rules; it must not publish undersized teams or silently change team count/capacity. |
+| BE-085 | P0 | Pair has worked together multiple times; reverse pair order appears in input; pair shares a team only in an uncompleted event | History count is symmetric and counts completed shared teams only; uncompleted rosters do not constrain assignment. |
+| BE-086 | P0 | Approved exception pair is supplied in reverse order or duplicated; exception belongs to a different activity | Pair normalization avoids duplicate exceptions; exception is scoped to its activity and cannot relax any other pair. |
+| BE-087 | P0 | Calendar access token is expired but refresh token remains valid | Server refreshes credentials securely and performs exactly one sync; no token is exposed. |
+| BE-088 | P0 | Calendar refresh token is expired, revoked, or refresh endpoint returns invalid_grant | Sync becomes `needs_reauthorization`; stop automatic retries that cannot succeed; credentials/status are updated safely. |
+| BE-089 | P1 | User grants Calendar consent without the required events scope or declines consent | Connection is not marked usable; no sync job calls Calendar; user can retry consent. |
+| BE-090 | P0 | Calendar provider returns 429 with `Retry-After`, then succeeds | Job remains retryable and respects provider backoff; a later retry creates/updates one event only. |
+| BE-091 | P0 | Calendar provider returns transient 5xx/network failure repeatedly, then recovers | Retry policy eventually succeeds without losing assignment or duplicating the event; terminal/retry state is observable. |
+| BE-092 | P0 | Calendar create response times out after provider may have created event; retry is delivered concurrently | Idempotency key/provider marker ensures one provider event and one stored event ID despite uncertain success and concurrent delivery. |
+| BE-093 | P1 | Calendar delete job targets an event already deleted manually in Google | Treat provider not-found as successful idempotent cleanup; mark sync deleted and complete tombstone cleanup when all jobs finish. |
+| BE-094 | P0 | Activity is deleted while create/update sync is pending or currently running | Deletion wins deterministically; no later retry recreates the removed event; delete is eventually applied and tombstone retained until cleanup completes. |
+| BE-095 | P1 | User disconnects Calendar while multiple sync jobs are queued; reconnects later | Disconnect prevents old jobs from using revoked credentials. Reconnect schedules only eligible current assigned events without duplicate creates. |
+| BE-096 | P0 | Activity has multiple assigned students; Calendar succeeds for some and fails for others | Assignment remains published; each user has an independent accurate sync status; retry targets failed users and does not duplicate successful events. |
+| BE-097 | P1 | Calendar event update changes time across timezone/DST boundary | Existing provider event is updated in place with correct UTC instants/timezone; no second event is created. |
+| BE-098 | P0 | Outbox worker crashes after provider success but before marking job complete | Redelivery is safe and idempotent; job eventually completes with one provider event and consistent sync record. |
+| BE-099 | P1 | Calendar status endpoint is requested while sync is pending, retrying, deleted, or needs reauthorization | Response uses only the documented status vocabulary and contains no credentials, stack traces, or raw sensitive provider payloads. |
+| BE-100 | P0 | OAuth callback replayed with the same state/code or mismatched user/session | Callback cannot bind credentials to the wrong user or create duplicate active connections; replay is rejected or idempotently handled. |
+
 ## Completion criteria
 
 - Every P0 case is implemented and green before MVP release.

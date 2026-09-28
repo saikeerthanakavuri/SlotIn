@@ -58,6 +58,20 @@ These are browser-level acceptance cases for the student and admin interfaces. T
 | FE-035 | P1 | Simulate assignment/calendar worker delay, Calendar outage, and retry. | Assignment stays published when Calendar fails; admin sees retryable sync state, not a failed assignment. |
 | FE-036 | P1 | Open admin pages as a student by direct URL and by modifying activity/group/submission IDs. | Access is denied; no admin-only participant, submission, assignment diagnostics, or unrelated group data is exposed. |
 
+## Additional Calendar and boundary cases
+
+| ID | Priority | Scenario and steps | Expected result |
+|---|---|---|---|
+| FE-037 | P1 | Calendar access token expires; the backend successfully refreshes it during sync. | Student continues to see the event as synced; no unnecessary reconnect prompt appears. |
+| FE-038 | P0 | Calendar authorization is revoked or refresh fails. | Sync displays needs-reauthorization with a reconnect action; it does not claim success or expose provider error details. |
+| FE-039 | P1 | Calendar provider is unavailable or rate-limits requests after team assignment. | Team assignment remains visible and published; Calendar UI indicates pending/retrying or failed sync separately from assignment status. |
+| FE-040 | P1 | Some teammates' Calendar sync succeeds while another teammate's fails. | Each student's own sync status is accurate; one person's failure does not make the whole team or assignment appear failed. |
+| FE-041 | P1 | User disconnects Calendar while a sync is queued, then reconnects later. | Disconnected state is immediate; after reconnect only eligible assigned event syncs are shown, without duplicate entries. |
+| FE-042 | P1 | Activity is removed while Calendar deletion is pending; provider reports the event already deleted. | UI eventually shows deleted/complete state; it does not revert to synced or show a permanent error. |
+| FE-043 | P1 | Event starts near midnight or during a daylight-saving transition in its configured timezone. | Event date/time and deadline display match the configured local timezone and remain consistent with the server's UTC timestamps. |
+| FE-044 | P1 | Registration or submission is attempted at the exact deadline using a controllable test clock. | UI reflects the API result and never shows success when the server rejects the boundary request. |
+| FE-045 | P1 | Team assignment is infeasible, solver limit is reached, or admin retry is running. | Admin sees distinct actionable states (infeasible vs still unresolved/resource limit vs processing); no partial assignment is presented as final. |
+
 ## Frontend release checks
 
 - Run the suite against a clean test database and deterministic test clock.
