@@ -71,6 +71,14 @@ These are browser-level acceptance cases for the student and admin interfaces. T
 | FE-043 | P1 | Event starts near midnight or during a daylight-saving transition in its configured timezone. | Event date/time and deadline display match the configured local timezone and remain consistent with the server's UTC timestamps. |
 | FE-044 | P1 | Registration or submission is attempted at the exact deadline using a controllable test clock. | UI reflects the API result and never shows success when the server rejects the boundary request. |
 | FE-045 | P1 | Team assignment is infeasible, solver limit is reached, or admin retry is running. | Admin sees distinct actionable states (infeasible vs still unresolved/resource limit vs processing); no partial assignment is presented as final. |
+| FE-046 | P0 | Let the signed-in session expire while a protected page is open, then submit a form. | Protected data is cleared or refreshed safely; mutation is not reported successful; user is prompted to sign in again without losing an unexplained state. |
+| FE-047 | P1 | Cancel Google sign-in, deny Calendar consent, or return from OAuth with an error. | User stays in a valid signed-out/disconnected state and receives a recoverable explanation; no endless redirect or false connected indicator. |
+| FE-048 | P1 | Admin removes an activity while a student has its details page open and the student tries to register. | Registration is rejected; detail page refreshes/updates to removed state and does not claim the student joined. |
+| FE-049 | P1 | Refresh or navigate back to a page after assignment version changes. | UI fetches the current published version and does not display stale groups as current. |
+| FE-050 | P1 | Retry an action after a network timeout where the server may already have succeeded (registration, submission, Calendar connection). | UI reconciles through a safe refetch/idempotent retry and does not show duplicate success or duplicate records. |
+| FE-051 | P1 | Calendar removal or update takes a long time and status changes asynchronously. | UI distinguishes queued/pending from completed; polling/refetch updates state without requiring a full sign-out. |
+| FE-052 | P1 | Admin paginates through registrations, submissions, and suggestions while records change. | UI keeps the correct total and row identity; empty last page and expired page parameters have a clear recovery path. |
+| FE-053 | P1 | Use keyboard and assistive technology on OAuth errors, validation errors, assignment diagnostics, and async status changes. | Errors/status are announced, associated with relevant controls, and can be reached/dismissed accessibly. |
 
 ## Frontend release checks
 

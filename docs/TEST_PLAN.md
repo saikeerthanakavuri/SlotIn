@@ -9,6 +9,19 @@ Detailed acceptance cases are organized here:
 
 These files are test specifications, not executable automated tests. Implement them with Playwright/Vitest as the corresponding application features are built.
 
+## Decisions needed for deterministic tests
+
+The current contract leaves some behavior open. Confirm these before encoding them as pass/fail expectations:
+
+- Whether a student may register again after withdrawing, and exactly when withdrawal closes.
+- Whether repeat-teammate history includes only completed activities or any published assignment, including cancelled/removed activities.
+- Who may call `GET /api/groups/:groupId` and which member fields students may see.
+- Whether a repeated submission replaces the group's prior submission, is rejected, or creates a version; also whether late work is rejected or stored as `LATE` (the API contract currently says reject).
+- How deadline processing is triggered, assignment scheduling/status transitions, supported maximum roster size, and solver time/resource limits.
+- Idempotency-key scope, mismatched-payload behavior, pagination consistency, background-job retry/terminal failure policy, and notification channels.
+
+These are product/API decisions, not test-runner details. The test specifications mark several affected cases so they can be finalized without guessing.
+
 ## Recommended tools
 
 - Vitest for unit and integration tests.
