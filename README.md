@@ -24,6 +24,30 @@ Students can suggest events, but only admins can officially post them.
 
 ---
 
+## Proposed Technology Stack
+
+This is the proposed stack for the application; it has not been implemented yet.
+
+### Frontend
+
+- **TypeScript and React** for the student and admin interfaces
+- **Next.js App Router** for pages, routing, and server-rendered UI
+- **Tailwind CSS** for responsive styling
+- Registration screens show event details, Google Calendar permission status, and calendar-sync result
+
+### Backend
+
+- **Next.js Route Handlers (TypeScript)** for authentication callbacks, event and registration APIs, team assignment, and Calendar API requests
+- **PostgreSQL** for users, events, registrations, teams, and teammate history
+- **Prisma ORM** for schema, migrations, and typed database access
+- **Google OAuth** for sign-in and Calendar authorization; request `calendar.events` when the student connects Calendar
+- **Google Calendar API** with Google's Node.js `googleapis` client to add the event to the registering student's primary calendar after registration succeeds
+- **Hosting:** Vercel for the Next.js app and a managed PostgreSQL service such as Neon or Supabase
+
+Keep Google OAuth client secrets and refresh tokens on the server. Request the narrow `calendar.events` scope, encrypt refresh tokens at rest, and never send tokens to the browser. Registration should be saved first; calendar creation should be retried safely if Google Calendar is temporarily unavailable. Store the resulting Google event ID and sync status with the registration so retries do not create duplicate events.
+
+---
+
 ## Event and Team Workflow
 
 1. An admin creates an event with its registration deadline and team size limits. The maximum team size is four.
