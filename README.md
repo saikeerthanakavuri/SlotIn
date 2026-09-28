@@ -120,6 +120,86 @@ Registration open
 
 ---
 
+## Backend Module
+
+The backend is the application layer between the student/admin interfaces and the database. It authenticates requests, checks permissions and business rules, persists event and registration data, runs team assignment, and returns consistent API responses. The backend described here is proposed; this section documents intended behavior rather than claiming these features are implemented.
+
+### Responsibilities
+
+- Authenticate students and admins and enforce role-based access on the server.
+- Create, edit, delete, list, and retrieve events; validate event dates, deadlines, and team-size limits.
+- Record student registrations and prevent duplicates or registration after the deadline or cancellation.
+- Generate balanced teams when registration closes, using completed team rosters to check prior teammate pairings.
+- Persist team membership and assignment status, and provide event, team, participant, and user-history views.
+- Accept activity submissions, enforce submission deadlines, track status, and provide admin review endpoints.
+- Validate all input and return predictable errors for invalid, unauthorized, missing, or conflicting requests.
+
+### Authentication and authorization
+
+SlotIn uses Google OAuth for sign-in. The server resolves the user's **Admin** or **Student** role using the configured role-assignment policy and checks it for every protected operation. Admin-only actions include event management, viewing all registrations and submissions, and triggering or resolving team assignment. Students can register for eligible events, view their own team and history, and submit work when submissions are enabled. A student's browser must never be trusted to establish its role or eligibility.
+
+Keep OAuth secrets and tokens on the server. Calendar access, if enabled, uses a separate consent flow and narrow Calendar scope; refresh tokens should be encrypted at rest and never returned to the browser.
+
+### Event participation and team assignment
+
+Students register individually; they do not select or join a team. At the deadline, the assignment process uses all eligible registrations and the event's minimum and maximum team sizes. It balances team sizes as evenly as possible: for 23 registrants with a maximum of 5, capacities are `5, 5, 5, 4, 4`.
+
+Prior completed team rosters are the source of teammate history. Every pair in a prior team contributes to the history count. Assignment should avoid all previously paired students as a hard constraint, consistent with the No-Repeat Teammate Rule above. Where multiple valid allocations exist, prefer the allocation with fewer repeated pairings if an explicitly recorded exception is permitted; never silently create a repeat pairing. If no valid assignment exists, save an admin-review state and explain the constraint conflict. Assignment requests and deadline jobs must be safe to retry without creating duplicate teams or incrementing history twice.
+
+Before saving an allocation, validate that each eligible registrant appears exactly once, no team exceeds its configured capacity, and all teams meet the event's size rules. Save rosters as the durable source of future teammate history. Group availability (`OPEN` or `FULL`) can be derived from capacity and current membership; assigned teams are not open groups that students can join.
+
+### Submissions
+
+If activity submissions are enabled, store the activity, submitting user and/or assigned team, description, output or evidence link, submission time, and status. Enforce the deadline on the server. Suggested states are `PENDING`, `SUBMITTED`, and `LATE`; the event's submission policy must define whether late submissions are rejected or recorded as late. Admins can view submissions and status by event.
+
+### Suggested data entities
+
+The database should preserve the relationships and constraints represented by these entities:
+
+| Entity | Purpose |
+|---|---|
+| `User` | Profile and role; identity comes from Google OAuth. |
+| `Event` | Event details, registration and submission deadlines, team-size limits, status, and creator. |
+| `Registration` | One user's participation state and registration time for an event. Enforce a unique `(eventId, userId)` pair. |
+| `Team` / `TeamMember` | Persisted assignment and event roster; enforce unique membership per event. |
+| `Submission` | User or team output, submission time, and review/status data. |
+| `EventSuggestion` | Optional student proposals for admin review. |
+
+Prior teammate counts can be derived from completed team rosters or maintained as a rebuildable index. If counts are stored, update them in the same transaction as finalizing an assignment, and ensure retries cannot double-count. Use foreign keys and database uniqueness constraints as well as application-level validation.
+
+### REST API surface
+
+The proposed API uses the existing event and registration model:
+
+| Method and path | Access | Purpose |
+|---|---|---|
+| `GET /api/activities` | Signed in | List events, with status and availability filters. |
+| `GET /api/activities/{id}` | Signed in | Retrieve event details. |
+| `POST /api/activities` | Admin | Create an event. |
+| `PUT /api/activities/{id}` | Admin | Edit an event according to its lifecycle rules. |
+| `DELETE /api/activities/{id}` | Admin | Remove or cancel an event according to retention rules. |
+| `POST /api/activities/{id}/registrations` | Student | Register for an eligible event. |
+| `GET /api/activities/{id}/registrations` | Admin | View event participants. |
+| `POST /api/activities/{id}/generate-teams` | Admin or trusted job | Trigger an idempotent team assignment. |
+| `GET /api/activities/{id}/teams` | Signed in | View published teams; admin access may include assignment details. |
+| `GET /api/users/{id}/team` | Self or Admin | Retrieve a user's team for an event (include the event identifier). |
+| `POST /api/activities/{id}/submissions` | Student | Submit work before the configured deadline. |
+| `GET /api/activities/{id}/submissions` | Admin | Review submissions and status for an event. |
+
+The API should return `400` for invalid input, `401` for unauthenticated requests, `403` for disallowed roles, `404` for missing resources, and `409` for conflicts such as duplicate registration or an invalid lifecycle transition. Responses should include a stable error code and a user-readable message.
+
+### Core guarantees
+
+- Enforce role, registration, capacity, and deadline rules on the server.
+- Persist registration separately from team assignment.
+- Assign every eligible registrant exactly once, or mark the event for admin review.
+- Keep teams within configured size limits and balance their sizes.
+- Do not silently repeat a teammate pairing; use prior finalized rosters as history.
+- Make assignment and its history updates transactional and safe to retry.
+- Track submission state and validate its deadline server-side.
+
+---
+
 ## Gaps & Issues to Resolve
 
 ### Logic gaps
