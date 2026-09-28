@@ -24,9 +24,27 @@ Students can suggest events, but only admins can officially post them.
 
 ---
 
+## Project Documentation
+
+The documents below describe the proposed product and implementation. The repository currently contains the project overview; these documents are design specifications, not evidence that the features are implemented.
+
+- [Product requirements](docs/PRODUCT_REQUIREMENTS.md)
+- [User flows](docs/USER_FLOWS.md)
+- [Data model](docs/DATA_MODEL.md)
+- [Team assignment rules](docs/TEAM_ASSIGNMENT.md)
+- [API contract](docs/API_CONTRACT.md)
+- [Google Calendar integration](docs/GOOGLE_CALENDAR.md)
+- [Test plan](docs/TEST_PLAN.md)
+- [Deployment and operations](docs/DEPLOYMENT_OPERATIONS.md)
+- [Recommended implementation choices](docs/IMPLEMENTATION_CHOICES.md)
+
+---
+
 ## Proposed Technology Stack
 
 This is the proposed stack for the application; it has not been implemented yet.
+
+Recommended concrete choices: use Auth.js for application sign-in, a separate Google OAuth consent flow for Calendar access, Neon PostgreSQL with Prisma, and Inngest for durable background jobs. Use Vitest and Playwright for tests. Keep an outbox table in PostgreSQL as the reliable record of jobs to enqueue/process.
 
 ### Frontend
 
@@ -37,26 +55,29 @@ This is the proposed stack for the application; it has not been implemented yet.
 
 ### Backend
 
-- **Next.js Route Handlers (TypeScript)** for authentication callbacks, event and registration APIs, team assignment, and Calendar API requests
+- **Next.js Route Handlers (TypeScript)** for authentication callbacks and event/registration APIs
 - **PostgreSQL** for users, events, registrations, teams, and teammate history
 - **Prisma ORM** for schema, migrations, and typed database access
-- **Google OAuth** for sign-in and Calendar authorization; request `calendar.events` when the student connects Calendar
-- **Google Calendar API** with Google's Node.js `googleapis` client to add the event to the registering student's primary calendar after registration succeeds
-- **Hosting:** Vercel for the Next.js app and a managed PostgreSQL service such as Neon or Supabase
+- **Auth.js plus Google OAuth** for sign-in; use a separate consent flow to request Calendar access
+- **Google Calendar API** with Google's Node.js `googleapis` client to add each student's event after teams are assigned and remove it if the event is removed
+- **Inngest** for retryable background work: deadline processing, team assignment, Calendar sync, and notifications
+- **Hosting:** Vercel for the Next.js app and Neon for managed PostgreSQL
+- **Tests:** Vitest for unit/integration tests and Playwright for browser flows
 
-Keep Google OAuth client secrets and refresh tokens on the server. Request the narrow `calendar.events` scope, encrypt refresh tokens at rest, and never send tokens to the browser. Registration should be saved first; calendar creation should be retried safely if Google Calendar is temporarily unavailable. Store the resulting Google event ID and sync status with the registration so retries do not create duplicate events.
+Keep Google OAuth client secrets and refresh tokens on the server. Request the narrow `calendar.events` scope, encrypt refresh tokens at rest, and never send tokens to the browser. Registration and team assignment should be saved before calendar creation; Calendar sync should be retried safely if Google is temporarily unavailable. Store the resulting Google event ID and sync status so retries do not create duplicate events.
 
 ---
 
 ## Event and Team Workflow
 
-1. An admin creates an event with its registration deadline and team size limits. The maximum team size is four.
+1. An admin creates an event with its registration deadline and maximum team size. The minimum team size is 3; the admin specifies a maximum of 3 or more.
 2. Students register individually before the deadline. They do not choose teammates or teams.
 3. Registration closes at the deadline. The system forms teams from all eligible registrants, avoiding any pair of students who have already shared a team at a previous event.
 4. The system publishes team assignments. Students can view their teammates from the event page and their profile.
 5. If the constraints make a complete assignment impossible, the event is flagged for admin review. The system must not silently create a repeat pairing.
+6. After teams are assigned, the system creates the event on each connected student's Google Calendar. If the event is removed from SlotIn, it is also removed from connected students' calendars.
 
-Team sizes should be balanced within the event's configured limits. For example, with 21 registrants and team sizes of 3–4, the system can form three teams of 4 and three teams of 3. Six teams of 3 plus one team of 4 would require 22 students.
+Team sizes should be balanced between 3 and the admin-configured maximum. For example, with 21 registrants and a maximum of 4, the system can form three teams of 4 and three teams of 3. Six teams of 3 plus one team of 4 would require 22 students.
 
 ### Registration rules
 
@@ -103,7 +124,7 @@ Registration open
 
 ### Logic gaps
 
-- [ ] Define whether events have a minimum team size as well as the maximum of four.
+- [ ] Define the supported upper bound for the admin-configured maximum team size.
 - [ ] Choose the assignment algorithm and how it handles large registration sets efficiently.
 - [ ] Define assignment behavior when no valid grouping exists: admin changes team size limits or records an exception.
 - [ ] Define whether students may withdraw after registration closes and how that affects assigned teams.
@@ -126,7 +147,7 @@ Registration open
 ### Data gaps
 
 - [ ] Choose the role assignment rule: email-domain whitelist, manual admin approval, or a database setup flag.
-- [ ] Store each event's registration deadline and team size limits.
+- [ ] Store each event's registration deadline and admin-configured maximum team size (minimum is 3).
 - [ ] Store registrations separately from team assignments, since students register before teams exist.
 - [ ] Store final team membership per event and retain completed rosters for teammate-history checks.
 - [ ] Define what happens to registrations and assignments when an admin edits or deletes an event.
@@ -154,10 +175,10 @@ Event
   - id
   - activityName, description
   - date, duration, registrationDeadline
-  - minTeamSize?                       ← to be decided
-  - maxTeamSize (at most 4)
+  - minTeamSize: 3
+  - maxTeamSize: admin configured (>= 3)
   - status: registration_open | registration_closed | assigning |
-            assigned | needs_admin_review | cancelled | archived
+            assigned | needs_admin_review | cancelled | removed | archived
   - createdBy: userId (admin)
 
 Registration
