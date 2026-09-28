@@ -2,6 +2,13 @@
 
 Tests verify user-visible rules, database constraints, external API failure handling, and role enforcement. Use a fake Google Calendar client in automated tests; keep a separate manual integration checklist for a test Google account.
 
+Detailed acceptance cases are organized here:
+
+- [Frontend browser test cases](../testcases/frontendtestcases/FRONTEND_TEST_CASES.md)
+- [Backend API and logic test cases](../testcases/backendtestcases/BACKEND_TEST_CASES.md)
+
+These files are test specifications, not executable automated tests. Implement them with Playwright/Vitest as the corresponding application features are built.
+
 ## Recommended tools
 
 - Vitest for unit and integration tests.
