@@ -11,16 +11,55 @@ These files are test specifications, not executable automated tests. Implement t
 
 ## Decisions needed for deterministic tests
 
-The current contract leaves some behavior open. Confirm these before encoding them as pass/fail expectations:
+The contract defines many expected outcomes, but some product and API choices still need a single, consistent answer. Confirm these before treating affected cases as final pass/fail requirements.
 
-- Whether a student may register again after withdrawing, and exactly when withdrawal closes.
-- Whether repeat-teammate history includes only completed activities or any published assignment, including cancelled/removed activities.
-- Who may call `GET /api/groups/:groupId` and which member fields students may see.
-- Whether a repeated submission replaces the group's prior submission, is rejected, or creates a version; also whether late work is rejected or stored as `LATE` (the API contract currently says reject).
-- How deadline processing is triggered, assignment scheduling/status transitions, supported maximum roster size, and solver time/resource limits.
-- Idempotency-key scope, mismatched-payload behavior, pagination consistency, background-job retry/terminal failure policy, and notification channels.
+### Participation and dropouts
 
-These are product/API decisions, not test-runner details. The test specifications mark several affected cases so they can be finalized without guessing.
+- What should happen when a student drops out after registration closes or after teams are published: may they self-withdraw, must an admin remove them, can the team be regenerated, and until what cutoff?
+- If a roster changes after publication, should the system attempt a new complete assignment, keep the remaining roster as-is, or flag admin review? Define version/audit behavior and whether all affected Calendar events are updated or deleted.
+- May a student register again after withdrawing before the deadline? Define the unique-registration and withdrawn-row behavior.
+- What happens to registrations when an event is cancelled or removed, and can a student see or export their past registration?
+
+### Assignment and teammate history
+
+- Confirm which rosters count as teammate history: only completed activities, or any published assignment, including cancelled/removed activities and participants who dropped out.
+- Define how deadline closure triggers assignment, its exact status transitions, and how duplicate/simultaneous scheduler deliveries are serialized.
+- Define the supported maximum team size and maximum participant count per activity, solver time/resource budget, fallback behavior, and retry limits.
+- Confirm the partition rule when minimum and maximum sizes make a balanced partition impossible (for example, 10 participants with min 3/max 3).
+- Define whether admins can change team limits after registration closes or assignment publishes, what confirmation is required, and how previous assignment versions remain auditable.
+- Specify repeat-pair exception approval permissions, pair/activity scope, expiry, and whether exceptions can be revoked.
+
+### Submissions and activity lifecycle
+
+- Decide whether a team may submit once, replace a prior submission, or create submission versions; define duplicate and concurrent submission behavior.
+- The API says late submissions are rejected, while other docs mention a possible `LATE` state. Choose one behavior and align statuses, response codes, and admin views.
+- Define whether submission is open before assignment, after activity removal/cancellation, or for a withdrawn participant.
+- Reconcile edit rules: the API contract blocks edits after assignment publication, while user-flow documentation discusses edits after registrations and recomputation. Define allowed fields/stages and calendar/assignment effects.
+- Define whether cancelled, removed, and completed activities retain registrations, submissions, rosters, and teammate history, and the retention period.
+
+### Authorization, privacy, and validation
+
+- Confirm admin provisioning (domain allowlist, manual approval, or both), email verification requirements, and how role changes affect existing sessions.
+- Define authorization for `GET /api/groups/:groupId`; specify which member fields students and admins may see. Ensure this matches the group-detail API and UI.
+- Specify maximum lengths/formats for names, descriptions, outputs, URLs, timestamps, and IDs, plus validation for unknown fields.
+- Define session lifetime, logout/revocation behavior, CSRF protection if cookie sessions are used, and account-linking rules for OAuth identities.
+
+### Calendar, jobs, and notifications
+
+- Align Calendar sync status vocabulary: `docs/API_CONTRACT.md` omits `not_connected`, while `docs/GOOGLE_CALENDAR.md` uses it. Define the response state and transitions for disconnected users, reconnects, revoked credentials, retries, and deletion.
+- Define what happens when a student manually deletes an event in Google Calendar and a later sync/update runs.
+- Specify idempotency-key requirements, key retention, replay behavior, and response for the same key with a different payload.
+- Define job retry/backoff, maximum attempts, terminal/dead-letter handling, worker lease recovery, and operational visibility.
+- Decide which notifications are in MVP, their channels, recipients, timing, and duplicate-delivery behavior.
+
+### API consistency and operations
+
+- Define pagination ordering and consistency when data changes between pages; specify maximum page size.
+- Make route role requirements, status codes, error codes, and request/response schemas explicit for every endpoint, including not-found and conflict cases.
+- Define event capacity/waitlist behavior, or explicitly exclude capacity limits from the MVP.
+- Set performance targets for API latency, assignment completion, and supported concurrent registrations so load tests have measurable pass criteria.
+
+These are product/API decisions, not test-runner details. Several cases are marked as conditional or unresolved until the relevant decisions are made; don’t encode guesses as expected behavior.
 
 ## Recommended tools
 
