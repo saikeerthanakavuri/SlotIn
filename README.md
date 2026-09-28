@@ -173,20 +173,22 @@ The proposed API uses the existing event and registration model:
 
 | Method and path | Access | Purpose |
 |---|---|---|
-| `GET /api/activities` | Signed in | List events, with status and availability filters. |
-| `GET /api/activities/{id}` | Signed in | Retrieve event details. |
-| `POST /api/activities` | Admin | Create an event. |
-| `PUT /api/activities/{id}` | Admin | Edit an event according to its lifecycle rules. |
-| `DELETE /api/activities/{id}` | Admin | Remove or cancel an event according to retention rules. |
-| `POST /api/activities/{id}/registrations` | Student | Register for an eligible event. |
-| `GET /api/activities/{id}/registrations` | Admin | View event participants. |
-| `POST /api/activities/{id}/generate-teams` | Admin or trusted job | Trigger an idempotent team assignment. |
-| `GET /api/activities/{id}/teams` | Signed in | View published teams; admin access may include assignment details. |
-| `GET /api/users/{id}/team` | Self or Admin | Retrieve a user's team for an event (include the event identifier). |
-| `POST /api/activities/{id}/submissions` | Student | Submit work before the configured deadline. |
-| `GET /api/activities/{id}/submissions` | Admin | Review submissions and status for an event. |
+| `GET /api/v1/events` | Signed in | List published events and the current student's registration state. |
+| `GET /api/v1/events/{eventId}` | Signed in | Retrieve event details and the current student's team, if published. |
+| `POST /api/v1/events/{eventId}/registrations` | Student | Register for an eligible event. |
+| `DELETE /api/v1/events/{eventId}/registrations/me` | Student | Withdraw before the deadline under the MVP policy. |
+| `POST /api/v1/admin/events` | Admin | Create an event. |
+| `PATCH /api/v1/admin/events/{eventId}` | Admin | Edit an event according to lifecycle rules. |
+| `POST /api/v1/admin/events/{eventId}/publish` | Admin | Publish an event. |
+| `DELETE /api/v1/admin/events/{eventId}` | Admin | Soft-remove an event and enqueue related cleanup. |
+| `GET /api/v1/admin/events/{eventId}/registrations` | Admin | View event participants. |
+| `GET /api/v1/admin/events/{eventId}/assignment` | Admin | View assignment status and diagnostics. |
+| `POST /api/v1/admin/events/{eventId}/assignment/retry` | Admin | Retry team assignment. |
+| `POST /api/v1/admin/events/{eventId}/assignment/exceptions` | Admin | Record an explicitly approved repeat-pair exception. |
+| `POST /api/v1/events/{eventId}/submissions` | Student | Submit work before the configured deadline. |
+| `GET /api/v1/admin/events/{eventId}/submissions` | Admin | Review submissions and status for an event. |
 
-The API should return `400` for invalid input, `401` for unauthenticated requests, `403` for disallowed roles, `404` for missing resources, and `409` for conflicts such as duplicate registration or an invalid lifecycle transition. Responses should include a stable error code and a user-readable message.
+The API should return `400` for invalid input, `401` for unauthenticated requests, `403` for disallowed roles, `404` for missing resources, and `409` for conflicts such as duplicate registration or an invalid lifecycle transition. Responses should include a stable error code and a user-readable message. The route list is proposed; finalize request and response details in `docs/API_CONTRACT.md` before implementation.
 
 ### Core guarantees
 

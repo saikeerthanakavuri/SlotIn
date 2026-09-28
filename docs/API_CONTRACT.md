@@ -26,6 +26,14 @@ Errors: `401 unauthenticated`, `403 forbidden`, `404 event_not_found`, `409 alre
 
 Withdraws before deadline under proposed MVP policy. Errors include `409 withdrawal_closed`.
 
+### `POST /events/:eventId/submissions`
+
+Creates or updates the signed-in student's submission for their assigned team, if the event accepts submissions and the submission deadline has not passed. The exact request fields and whether late work is rejected or recorded as late must be finalized before implementation.
+
+### Admin submission routes
+
+- `GET /admin/events/:eventId/submissions` lists submissions and status for an event. Admin only.
+
 ### `GET /me/calendar-connection`
 
 Returns `{ "connected": true|false }`; never returns credentials.
@@ -60,3 +68,4 @@ Returns the student's sync state per registered event, without provider tokens o
 - Return stable machine-readable error codes and user-safe messages.
 - Never expose OAuth tokens, internal stack traces, or another student's private profile fields.
 - Use pagination for admin registration lists.
+- Submission routes use the event naming and `/api/v1` version prefix above; submissions are associated with the authenticated student and their assigned team, not an arbitrary user ID supplied by the client.
