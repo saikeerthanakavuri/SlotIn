@@ -169,24 +169,39 @@ Prior teammate counts can be derived from completed team rosters or maintained a
 
 ### REST API surface
 
-The proposed API uses the existing event and registration model:
+The proposed API follows the route names and behavior in [the API contract](docs/API_CONTRACT.md):
 
 | Method and path | Access | Purpose |
 |---|---|---|
-| `GET /api/v1/events` | Signed in | List published events and the current student's registration state. |
-| `GET /api/v1/events/{eventId}` | Signed in | Retrieve event details and the current student's team, if published. |
-| `POST /api/v1/events/{eventId}/registrations` | Student | Register for an eligible event. |
-| `DELETE /api/v1/events/{eventId}/registrations/me` | Student | Withdraw before the deadline under the MVP policy. |
-| `POST /api/v1/admin/events` | Admin | Create an event. |
-| `PATCH /api/v1/admin/events/{eventId}` | Admin | Edit an event according to lifecycle rules. |
-| `POST /api/v1/admin/events/{eventId}/publish` | Admin | Publish an event. |
-| `DELETE /api/v1/admin/events/{eventId}` | Admin | Soft-remove an event and enqueue related cleanup. |
-| `GET /api/v1/admin/events/{eventId}/registrations` | Admin | View event participants. |
-| `GET /api/v1/admin/events/{eventId}/assignment` | Admin | View assignment status and diagnostics. |
-| `POST /api/v1/admin/events/{eventId}/assignment/retry` | Admin | Retry team assignment. |
-| `POST /api/v1/admin/events/{eventId}/assignment/exceptions` | Admin | Record an explicitly approved repeat-pair exception. |
-| `POST /api/v1/events/{eventId}/submissions` | Student | Submit work before the configured deadline. |
-| `GET /api/v1/admin/events/{eventId}/submissions` | Admin | Review submissions and status for an event. |
+| `GET /api/auth/google` | Public | Start Google sign-in. |
+| `GET /api/auth/google/callback` | Public callback | Complete Google sign-in and create the session. |
+| `POST /api/auth/logout` | Signed in | End the current session. |
+| `GET /api/auth/me` | Signed in | Retrieve the current user's identity and role. |
+| `GET /api/activities` | Signed in | List published activities. |
+| `GET /api/activities/{id}` | Signed in | Retrieve activity details and the current student's registration/team. |
+| `POST /api/activities/{id}/registrations` | Student | Register for an eligible activity. |
+| `DELETE /api/activities/{id}/registrations/me` | Student | Withdraw before the deadline under the MVP policy. |
+| `GET /api/users/me/group/{activityId}` | Student | Retrieve the current student's assigned group. |
+| `POST /api/activities/{id}/submit` | Student | Submit work for the assigned group before the deadline. |
+| `GET /api/activities/{id}/groups` | Admin | View groups and capacity counts. |
+| `GET /api/groups/{groupId}` | Admin | View group details and members. |
+| `POST /api/activities/{id}/generate-groups` | Admin | Trigger smart group allocation. |
+| `GET /api/activities/{id}/assignment` | Admin | View assignment status and diagnostics. |
+| `POST /api/activities/{id}/assignment/retry` | Admin | Retry team assignment. |
+| `POST /api/activities/{id}/assignment/exceptions` | Admin | Record an explicitly approved repeat-pair exception. |
+| `GET /api/activities/{id}/submissions` | Admin | Review submissions and status for an activity. |
+| `GET /api/submissions/{id}` | Admin | Retrieve a submission. |
+| `POST /api/activities` | Admin | Create an activity. |
+| `PUT /api/activities/{id}` | Admin | Edit an activity according to lifecycle rules. |
+| `POST /api/activities/{id}/publish` | Admin | Publish an activity. |
+| `DELETE /api/activities/{id}` | Admin | Soft-delete an activity and enqueue related cleanup. |
+| `GET /api/me/calendar-connection` | Student | Check Calendar connection status. |
+| `POST /api/me/calendar-connection` | Student | Start Calendar authorization. |
+| `DELETE /api/me/calendar-connection` | Student | Disconnect Calendar access. |
+| `GET /api/me/calendar-syncs` | Student | View Calendar sync status. |
+| `POST /api/suggestions` | Student | Suggest an activity for admin review. |
+| `GET /api/admin/suggestions` | Admin | Review activity suggestions. |
+| `PATCH /api/admin/suggestions/{id}` | Admin | Approve or reject an activity suggestion. |
 
 The API should return `400` for invalid input, `401` for unauthenticated requests, `403` for disallowed roles, `404` for missing resources, and `409` for conflicts such as duplicate registration or an invalid lifecycle transition. Responses should include a stable error code and a user-readable message. The route list is proposed; finalize request and response details in `docs/API_CONTRACT.md` before implementation.
 
